@@ -1,0 +1,14 @@
+{
+  "name": "ghost-worker-detection",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "@netlify/database": "^2.0.3",
+    "@netlify/server": "^0.1.6",
+    "hono": "^4.13.18"
+  }
+}

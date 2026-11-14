@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Ghost Worker Detective — Payroll Integrity</title>
+  <meta name="description" content="Detect ghost workers on your payroll: duplicate identities, shared bank accounts, absentees and people paid after leaving." />
+  <meta name="theme-color" content="#15130f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👻</text></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">GW</span>
+      <div>
+        <h1>Ghost Worker <em>Detective</em></h1>
+        <p>Payroll integrity &amp; corrective action</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="overview" role="tab">Overview</button>
+      <button class="tab" data-view="cases" role="tab">Cases <span class="badge" id="caseCount">0</span></button>
+      <button class="tab" data-view="employees" role="tab">Employees</button>
+      <button class="tab" data-view="import" role="tab">Import</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- OVERVIEW -->
+    <section class="view active" id="view-overview">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">Case file · <span id="today"></span></p>
+          <h2 id="heroTitle">Loading payroll…</h2>
+          <p class="lede" id="heroText">Every record is checked for duplicate identities, shared bank accounts, long absences, missing documents and payments after exit.</p>
+        </div>
+        <button class="btn btn-voice" data-open-assistant>
+          <span class="mic-dot" aria-hidden="true"></span> Ask the Inspector
+        </button>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="grid-2">
+        <article class="panel">
+          <header class="panel-head"><h3>Risk distribution</h3></header>
+          <div class="riskbar" id="riskbar"></div>
+          <ul class="legend" id="legend"></ul>
+        </article>
+        <article class="panel">
+          <header class="panel-head">
+            <h3>Top suspects</h3>
+            <button class="link" data-goto="cases">All cases →</button>
+          </header>
+          <ol class="suspects" id="topSuspects"></ol>
+        </article>
+      </div>
+
+      <article class="panel">
+        <header class="panel-head"><h3>What triggers a flag</h3></header>
+        <ul class="rules">
+          <li><b>Shared identity</b> — same national ID, bank account or phone across employees</li>
+          <li><b>Paid after exit</b> — salary paid after the termination date</li>
+          <li><b>Absent</b> — no attendance for 30+ or 90+ days, or none at all</li>
+          <li><b>Missing papers</b> — no national ID, bank account or phone</li>
+          <li><b>Unverified</b> — never physically verified by HR</li>
+          <li><b>Salary outlier</b> — over 2.5× the department median</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- CASES -->
+    <section class="view" id="view-cases">
+      <div class="toolbar">
+        <h2>Open cases</h2>
+        <div class="segmented" id="caseFilter">
+          <button class="active" data-level="all">All flagged</button>
+          <button data-level="high">High</button>
+          <button data-level="medium">Medium</button>
+          <button data-level="low">Low</button>
+        </div>
+      </div>
+      <div class="cases" id="caseList"></div>
+    </section>
+
+    <!-- EMPLOYEES -->
+    <section class="view" id="view-employees">
+      <div class="toolbar">
+        <h2>Employees</h2>
+        <div class="toolbar-actions">
+          <input type="search" id="search" placeholder="Search name, ID, bank, department…" aria-label="Search employees" />
+          <select id="levelFilter" aria-label="Filter by risk">
+            <option value="all">All risk levels</option>
+            <option value="high">High risk</option>
+            <option value="medium">Medium risk</option>
+            <option value="low">Low risk</option>
+            <option value="clear">Clear</option>
+          </select>
+          <button class="btn btn-primary" id="addBtn">+ Add employee</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Employee</th><th>Department</th><th class="num">Salary</th><th>Status</th><th>Last attendance</th><th>Risk</th><th></th></tr>
+          </thead>
+          <tbody id="employeeRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- IMPORT -->
+    <section class="view" id="view-import">
+      <div class="toolbar"><h2>Import payroll</h2></div>
+      <div class="grid-2">
+        <article class="panel">
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" accept=".csv,text/csv" hidden />
+            <span class="drop-icon" aria-hidden="true">⇪</span>
+            <strong>Drop a payroll CSV here</strong>
+            <span>or tap to choose a file. Exporting from Excel? Use <em>File → Save As → CSV</em>.</span>
+          </label>
+          <div id="preview" class="preview" hidden></div>
+        </article>
+        <article class="panel">
+          <header class="panel-head"><h3>Expected columns</h3></header>
+          <p class="muted">Headers are matched flexibly (e.g. “Staff No”, “Emp ID” or “Employee Code” all work). Only ID and name are required. Existing IDs are updated.</p>
+          <div class="chips mono">
+            <span>employee_code</span><span>full_name</span><span>national_id</span><span>bank_account</span><span>phone</span><span>department</span><span>position</span><span>salary</span><span>status</span><span>hire_date</span><span>termination_date</span><span>last_attendance</span><span>last_paid</span><span>verified</span>
+          </div>
+          <div class="stack">
+            <button class="btn" id="templateBtn">Download CSV template</button>
+            <button class="btn" id="sampleBtn">Load sample payroll (16 staff)</button>
+            <button class="btn btn-danger" id="clearBtn">Delete all employees</button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating voice button -->
+  <button class="fab" data-open-assistant aria-label="Open voice assistant">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+  </button>
+
+  <!-- Assistant drawer -->
+  <aside class="assistant" id="assistant" aria-hidden="true" aria-label="Inspector voice assistant">
+    <header class="assistant-head">
+      <div>
+        <h3>The Inspector</h3>
+        <p id="voiceStatus">Tap the microphone and ask about your payroll.</p>
+      </div>
+      <button class="icon-btn" id="closeAssistant" aria-label="Close">✕</button>
+    </header>
+    <div class="chat" id="chat"></div>
+    <div class="prompts" id="prompts">
+      <button>Who are the highest-risk employees?</button>
+      <button>How much salary is at risk each month?</button>
+      <button>Which employees share bank accounts?</button>
+      <button>What should HR do first?</button>
+    </div>
+    <form class="composer" id="composer">
+      <button type="button" class="mic" id="micBtn" aria-label="Speak">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+      </button>
+      <input id="questionInput" placeholder="Ask or type a question…" autocomplete="off" />
+      <button class="btn btn-primary" type="submit">Ask</button>
+    </form>
+    <label class="speak-toggle"><input type="checkbox" id="speakReplies" checked /> Read answers aloud</label>
+  </aside>
+
+  <!-- Employee modal -->
+  <dialog id="employeeDialog">
+    <form method="dialog" id="employeeForm" class="form">
+      <header class="panel-head">
+        <h3 id="formTitle">Add employee</h3>
+        <button class="icon-btn" value="cancel" formnovalidate aria-label="Close">✕</button>
+      </header>
+      <div class="form-grid">
+        <label>Employee ID *<input name="employee_code" required /></label>
+        <label>Full name *<input name="full_name" required /></label>
+        <label>National ID<input name="national_id" /></label>
+        <label>Bank account<input name="bank_account" /></label>
+        <label>Phone<input name="phone" type="tel" /></label>
+        <label>Department<input name="department" list="deptList" /></label>
+        <label>Position<input name="position" /></label>
+        <label>Monthly salary<input name="salary" type="number" min="0" step="any" /></label>
+        <label>Status
+          <select name="status"><option value="active">Active</option><option value="suspended">Suspended</option><option value="terminated">Terminated</option></select>
+        </label>
+        <label>Hire date<input name="hire_date" type="date" /></label>
+        <label>Termination date<input name="termination_date" type="date" /></label>
+        <label>Last attendance<input name="last_attendance" type="date" /></label>
+        <label>Last paid<input name="last_paid" type="date" /></label>
+        <label class="check"><input name="verified" type="checkbox" /> Physically verified by HR</label>
+        <label class="full">Notes / corrective action<textarea name="notes" rows="3"></textarea></label>
+      </div>
+      <datalist id="deptList"></datalist>
+      <p class="form-error" id="formError" hidden></p>
+      <footer class="form-actions">
+        <button class="btn btn-danger" type="button" id="deleteBtn" hidden>Delete</button>
+        <span class="spacer"></span>
+        <button class="btn" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn btn-primary" id="saveBtn" value="save">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
